@@ -1,6 +1,6 @@
 [project]
-name = "fungible-token"
-description = "Demonstrates a basic fungible token that conforms to the SIP-010 FT standard"
+name = "SATZ-token"
+description = "SATZ Governance and Rewards Token, SIP-010 compliant"
 authors = []
 telemetry = true
 cache_dir = "./.cache"
@@ -10,11 +10,6 @@ contract_id = "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standa
 
 [contracts.fungible-token]
 path = "contracts/fungible-token.clar"
-clarity_version = 3
-epoch = 3.0
-
-[contracts.defi]
-path = 'contracts/extern/defi.clar'
 clarity_version = 3
 epoch = 3.0
 
