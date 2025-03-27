@@ -1,73 +1,61 @@
-;; This contract implements the SIP-010 community-standard Fungible Token trait.
-(impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+;; SATZ Governance and Rewards Token Contract
 
-;; Define the FT, with no maximum supply
-(define-fungible-token clarity-coin)
+;; Tokenomic Constants
+(define-constant TOTAL_SUPPLY u1000000000)  ;; 1 billion total supply
+(define-constant TREASURY 'SP3D1VC4WBM939SA65CTHS7HEVF8GJA6N9Y2APJWV)  ;; Treasury wallet
 
-;; Define errors
-(define-constant ERR_OWNER_ONLY (err u100))
-(define-constant ERR_NOT_TOKEN_OWNER (err u101))
+;; Token Metadata
+(define-constant TOKEN_NAME "Bitcoin Labz")     ;; Human-readable token name
+(define-constant TOKEN_SYMBOL "SATZ")            ;; Ticker symbol
+(define-constant TOKEN_URI "https://raw.githubusercontent.com/Bitcoinlabz/SATZ-Smart-Contract-test/main/metadata/satz-metadata.json") ;; Metadata URI pointing to a JSON file with token details
+(define-constant TOKEN_DECIMALS u6)              ;; Token decimals (e.g., u6 means 1 token = 1,000,000 units)
 
-;; Define constants for contract
-(define-constant CONTRACT_OWNER tx-sender)
-(define-constant TOKEN_URI u"https://hiro.so") ;; utf-8 string with token metadata host
-(define-constant TOKEN_NAME "Clarity Coin")
-(define-constant TOKEN_SYMBOL "CC")
-(define-constant TOKEN_DECIMALS u6) ;; 6 units displayed past decimal, e.g. 1.000_000 = 1 token
+;; SIP-010 Compliance Implementation
+(define-fungible-token SATZ TOTAL_SUPPLY)
 
-
-;; SIP-010 function: Get the token balance of a specified principal
-(define-read-only (get-balance (who principal))
-  (ok (ft-get-balance clarity-coin who))
-)
-
-;; SIP-010 function: Returns the total supply of fungible token
-(define-read-only (get-total-supply)
-  (ok (ft-get-supply clarity-coin))
-)
-
-;; SIP-010 function: Returns the human-readable token name
-(define-read-only (get-name)
-  (ok TOKEN_NAME)
-)
-
-;; SIP-010 function: Returns the symbol or "ticker" for this token
-(define-read-only (get-symbol)
-  (ok TOKEN_SYMBOL)
-)
-
-;; SIP-010 function: Returns number of decimals to display
-(define-read-only (get-decimals)
-  (ok TOKEN_DECIMALS)
-)
-
-;; SIP-010 function: Returns the URI containing token metadata
+;; Token Metadata Access Functions
 (define-read-only (get-token-uri)
-  (ok (some TOKEN_URI))
-)
+  (ok TOKEN_URI))
 
-;; Mint new tokens and send them to a recipient.
-;; Only the contract deployer can perform this operation.
-(define-public (mint (amount uint) (recipient principal))
-  (begin
-    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_OWNER_ONLY)
-    (ft-mint? clarity-coin amount recipient)
-  )
-)
+(define-read-only (get-name)
+  (ok TOKEN_NAME))
 
-;; SIP-010 function: Transfers tokens to a recipient
-;; Sender must be the same as the caller to prevent principals from transferring tokens they do not own.
-(define-public (transfer
-  (amount uint)
-  (sender principal)
-  (recipient principal)
-  (memo (optional (buff 34)))
-)
+(define-read-only (get-symbol)
+  (ok TOKEN_SYMBOL))
+
+(define-read-only (get-decimals)
+  (ok TOKEN_DECIMALS))
+
+(define-read-only (get-total-supply)
+  (ok TOTAL_SUPPLY))
+
+;; Data Variables
+(define-data-var circulating-supply uint u0)  ;; Track minted tokens
+
+;; Governance address (fixed, same as treasury in this case)
+(define-constant GOVERNANCE 'SP3D1VC4WBM939SA65CTHS7HEVF8GJA6N9Y2APJWV)
+
+;; Mint Function (only for initial supply to treasury)
+(define-public (mint-initial-supply)
   (begin
-    ;; #[filter(amount, recipient)]
-    (asserts! (or (is-eq tx-sender sender) (is-eq contract-caller sender)) ERR_NOT_TOKEN_OWNER)
-    (try! (ft-transfer? clarity-coin amount sender recipient))
-    (match memo to-print (print to-print) 0x)
+    ;; Only governance can mint the initial supply.
+    (asserts! (is-eq tx-sender GOVERNANCE) (err u100))
+    ;; Ensure that minting happens only once.
+    (asserts! (is-eq (var-get circulating-supply) u0) (err u101))
+    (var-set circulating-supply TOTAL_SUPPLY)
+    (asserts! (is-ok (ft-mint? SATZ TOTAL_SUPPLY TREASURY)) (err u102))
     (ok true)
-  )
-)
+  ))
+
+;; External Project Reward Distribution Compatibility
+(define-public (distribute-reward (amount uint) (recipient principal))
+  (begin
+    ;; Only governance can distribute rewards.
+    (asserts! (is-eq tx-sender GOVERNANCE) (err u103))
+    (asserts! (is-ok (ft-transfer? SATZ amount TREASURY recipient)) (err u104))
+    (ok true)
+  ))
+
+;; Read-only Balance Lookup
+(define-read-only (get-balance (owner principal))
+  (ok (ft-get-balance SATZ owner)))
